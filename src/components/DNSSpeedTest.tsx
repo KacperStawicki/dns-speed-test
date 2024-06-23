@@ -27,6 +27,7 @@ import {
   Play,
   Plus,
   Router,
+  SatelliteDish,
   Search,
   Server,
   ServerCog,
@@ -590,11 +591,11 @@ export default function DNSSpeedTest() {
   );
 
   return (
-    <div className="w-full max-w-4xl mx-auto p-6 space-y-6">
+    <>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
+        transition={{ duration: 0.5 }}
       >
         <DNSLegend />
       </motion.div>
@@ -769,7 +770,7 @@ export default function DNSSpeedTest() {
           {loading ? (
             <Loader className="ml-2 animate-spin" />
           ) : (
-            <Play className="ml-2" />
+            <SatelliteDish className="ml-2" />
           )}
         </Button>
 
@@ -945,6 +946,6 @@ export default function DNSSpeedTest() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }
