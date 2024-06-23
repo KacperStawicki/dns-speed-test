@@ -86,6 +86,7 @@ The MIT License is a permissive license that is short and to the point. It lets 
 - [React](https://reactjs.org/)
 - [Chart.js](https://www.chartjs.org/)
 - [Lucide Icons](https://lucide.dev/)
+- [shadcn/ui](https://ui.shadcn.com/)
 
 ## Contact
 
