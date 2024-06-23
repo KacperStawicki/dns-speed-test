@@ -1,19 +1,28 @@
 // src/components/DNSSpeedTest.tsx
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
-import { Card } from "./ui/card";
-import { Input } from "./ui/input";
-import { Button } from "./ui/button";
-import { Label } from "./ui/label";
+import {
+  BarElement,
+  CategoryScale,
+  Chart as ChartJS,
+  ChartOptions,
+  Legend,
+  LinearScale,
+  Title,
+  Tooltip,
+} from "chart.js";
+import { MatrixController, MatrixElement } from "chartjs-chart-matrix";
+import { saveAs } from "file-saver";
 import { motion } from "framer-motion";
 import {
   Activity,
   AlertTriangle,
+  Check,
   Cog,
+  Copy,
   Download,
+  ExternalLink,
   Globe,
-  Hash,
   Loader,
   Play,
   Plus,
@@ -24,21 +33,10 @@ import {
   SquareStack,
   Trash2,
 } from "lucide-react";
-import { DNSLegend, popularDNSServers } from "./DNSLegend";
-import { Progress } from "./ui/progress";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  ChartOptions,
-} from "chart.js";
+import React, { useCallback, useMemo, useState } from "react";
 import { Bar } from "react-chartjs-2";
-import { MatrixController, MatrixElement } from "chartjs-chart-matrix";
-import { Switch } from "./ui/switch";
+import { useCopyToClipboard } from "usehooks-ts";
+import { DNSLegend, popularDNSServers } from "./DNSLegend";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,8 +46,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "./ui/alert-dialog";
-import { useToast } from "./ui/use-toast";
-import { saveAs } from "file-saver";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { Progress } from "./ui/progress";
+import { Switch } from "./ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { toast, useToast } from "./ui/use-toast";
 
 ChartJS.register(
   CategoryScale,
@@ -139,6 +143,118 @@ const useApiCall = () => {
   return { callApi };
 };
 
+const CopyableInput = React.memo(
+  ({ value, onCopy }: { value: string; onCopy: (text: string) => void }) => {
+    const [isCopied, setIsCopied] = useState(false);
+
+    const handleCopy = () => {
+      onCopy(value);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    };
+
+    return (
+      <div className="flex mt-1">
+        <Input readOnly value={value} className="flex-grow" />
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="ml-2"
+          onClick={handleCopy}
+        >
+          {isCopied ? (
+            <Check className="h-4 w-4" />
+          ) : (
+            <Copy className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
+    );
+  }
+);
+
+const DNSInstructions = React.memo(
+  ({
+    dnsServer,
+    onCopy,
+  }: {
+    dnsServer: string;
+    onCopy: (text: string) => void;
+  }) => {
+    const [currentTab, setCurrentTab] = useState("windows");
+
+    return (
+      <Tabs
+        value={currentTab}
+        onValueChange={setCurrentTab}
+        className="w-full mt-4"
+      >
+        <TabsList>
+          <TabsTrigger value="windows">Windows</TabsTrigger>
+          <TabsTrigger value="macos">macOS</TabsTrigger>
+          <TabsTrigger value="linux">Linux</TabsTrigger>
+        </TabsList>
+        <TabsContent value="windows">
+          <ol className="list-decimal list-inside space-y-2">
+            <li>Open Control Panel</li>
+            <li>Click on "Network and Internet"</li>
+            <li>Click on "Network and Sharing Center"</li>
+            <li>Click on "Change adapter settings"</li>
+            <li>
+              Right-click on your active network connection and select
+              "Properties"
+            </li>
+            <li>
+              Select "Internet Protocol Version 4 (TCP/IPv4)" and click
+              "Properties"
+            </li>
+            <li>Select "Use the following DNS server addresses"</li>
+            <li>Enter {dnsServer} as the Preferred DNS server</li>
+            <li>Click "OK" to save changes</li>
+          </ol>
+        </TabsContent>
+        <TabsContent value="macos">
+          <ol className="list-decimal list-inside space-y-2">
+            <li>Click the Apple menu and go to System Preferences</li>
+            <li>Click on "Network"</li>
+            <li>Select your active network connection</li>
+            <li>Click "Advanced" and then the "DNS" tab</li>
+            <li>Click the "+" button to add a new DNS server</li>
+            <li>Enter {dnsServer}</li>
+            <li>Click "OK" and then "Apply" to save changes</li>
+          </ol>
+        </TabsContent>
+        <TabsContent value="linux">
+          <ol className="list-decimal list-inside space-y-2">
+            <li>Open terminal</li>
+            <li>
+              Edit the resolv.conf file with sudo privileges:
+              <CopyableInput
+                value="sudo nano /etc/resolv.conf"
+                onCopy={onCopy}
+              />
+            </li>
+            <li>
+              Add or modify the nameserver line:
+              <CopyableInput
+                value={`nameserver ${dnsServer}`}
+                onCopy={onCopy}
+              />
+            </li>
+            <li>Save the file (Ctrl+X, then Y, then Enter in nano)</li>
+            <li>Restart the network service or reboot your system</li>
+          </ol>
+          <p className="mt-2 text-sm text-gray-600">
+            Note: On some Linux distributions, you may need to modify
+            NetworkManager settings instead.
+          </p>
+        </TabsContent>
+      </Tabs>
+    );
+  }
+);
+
 export default function DNSSpeedTest() {
   const [dnsServers, setDnsServers] = useState(predefinedDnsServers);
   const [domains, setDomains] = useState(predefinedDomains);
@@ -155,9 +271,9 @@ export default function DNSSpeedTest() {
   const [showBestDNSAlert, setShowBestDNSAlert] = useState(false);
   const [bestDNS, setBestDNS] = useState("");
   const [enableDownloadTest, setEnableDownloadTest] = useState(true);
+  const [_, copy] = useCopyToClipboard();
 
   const { callApi } = useApiCall();
-  const { toast } = useToast();
 
   const deleteDnsServer = (index: number) => {
     const newDnsServers = dnsServers.filter((_, i) => i !== index);
@@ -287,26 +403,6 @@ export default function DNSSpeedTest() {
 
       return currentScore > bestScore ? current : best;
     }).dnsServer;
-  };
-
-  const sortedDownloadResults = Array.from(
-    new Map(results.map((item) => [item.dnsServer, item]))
-  )
-    .map(([_, item]) => item)
-    .sort((a, b) => (b.downloadSpeed || 0) - (a.downloadSpeed || 0));
-
-  const calculateAveragePing = (results: TestResult[]) => {
-    return results
-      .map((result) => {
-        const allPings = Object.values(result.dnsResults).flat();
-        const averagePing =
-          allPings.reduce((sum, ping) => sum + ping, 0) / allPings.length;
-        return {
-          dnsServer: result.dnsServer,
-          averagePing: averagePing,
-        };
-      })
-      .sort((a, b) => a.averagePing - b.averagePing);
   };
 
   const averagePingChartData = useMemo(() => {
@@ -466,6 +562,32 @@ export default function DNSSpeedTest() {
       ],
     };
   }, [results]);
+
+  const getBestDNSInfo = useCallback((dnsServer: string) => {
+    return popularDNSServers.find((server) => server.ip === dnsServer) || null;
+  }, []);
+
+  const copyToClipboard = (text: string) => {
+    copy(text)
+      .then(() => {
+        toast({
+          title: "Copied to clipboard",
+          description: "The command has been copied to your clipboard.",
+        });
+      })
+      .catch(() => {
+        toast({
+          title: "Copy failed",
+          description: "Failed to copy the command to clipboard.",
+          variant: "destructive",
+        });
+      });
+  };
+
+  const memoizedDNSInstructions = useMemo(
+    () => <DNSInstructions dnsServer={bestDNS} onCopy={copyToClipboard} />,
+    [bestDNS, copyToClipboard]
+  );
 
   return (
     <div className="w-full max-w-4xl mx-auto p-6 space-y-6">
@@ -787,16 +909,35 @@ export default function DNSSpeedTest() {
         </motion.div>
       )}
       <AlertDialog open={showBestDNSAlert} onOpenChange={setShowBestDNSAlert}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle>Best DNS Server</AlertDialogTitle>
             <AlertDialogDescription>
               Based on the test results, the best DNS server is:
               <strong className="block mt-2 text-lg">{bestDNS}</strong>
-              This DNS server provided the best balance of Download speed, DNS
-              response time, Ping spikes & Packet loss.
+              {getBestDNSInfo(bestDNS) && (
+                <a
+                  href={getBestDNSInfo(bestDNS)?.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center text-blue-500 hover:underline mt-2"
+                >
+                  Visit {getBestDNSInfo(bestDNS)?.name} website
+                  <ExternalLink className="ml-1 h-4 w-4" />
+                </a>
+              )}
+              <p className="mt-2">
+                This DNS server provided the best balance of Download speed, DNS
+                response time, Ping spikes & Packet loss.
+              </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="mt-4">
+            <h3 className="text-lg font-semibold mb-2">
+              How to change your DNS server:
+            </h3>
+            {memoizedDNSInstructions}
+          </div>
           <AlertDialogFooter>
             <AlertDialogAction onClick={() => setShowBestDNSAlert(false)}>
               OK

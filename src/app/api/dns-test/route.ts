@@ -1,9 +1,9 @@
 // src/app/api/dns-test/route.ts
 
-import { NextRequest, NextResponse } from "next/server";
 import dns from "dns";
-import { promisify } from "util";
 import https from "https";
+import { NextRequest } from "next/server";
+import { promisify } from "util";
 
 const resolve4 = promisify(dns.resolve4);
 
@@ -134,7 +134,6 @@ export async function POST(request: NextRequest) {
     domains,
     downloadUrl,
     testCount = 5,
-    downloadTestDuration = 5,
   } = body;
 
   if (
