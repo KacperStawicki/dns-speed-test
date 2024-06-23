@@ -21,7 +21,7 @@ DNS Speed Test is a local application that helps users find the fastest DNS serv
 
 ### Installation and Setup
 
-1. Navigate to the [GitHub releases page](https://github.com/yourusername/dns-speed-test/releases) of this project.
+1. Navigate to the [[GitHub releases page]](https://github.com/Renjirox/dns-speed-test/releases/tag/v1.0.0) of this project.
 2. Download the appropriate script file for your operating system:
 
    - For Windows: `setup_and_run.bat`
